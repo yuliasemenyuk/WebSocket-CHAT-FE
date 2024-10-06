@@ -1,17 +1,22 @@
 import "./app.css";
 import Cookies from "js-cookie";
 import { io } from "socket.io-client";
-import { User } from "./types";
-
-console.log(process.env.HOST);
+import { User, Message } from "./types";
+import { formatMessageDate } from "./utils";
 
 //Connecting to server
 const socket = io(process.env.HOST);
 
 // DOM elements
-const loginContainer = document.getElementById("login-container")!;
-const chatContainer = document.getElementById("chat-container")!;
-const chatMessages = document.getElementById("chat-messages")!;
+const loginContainer = document.getElementById(
+  "login-container"
+)! as HTMLDivElement;
+const chatContainer = document.getElementById(
+  "chat-container"
+)! as HTMLDivElement;
+const chatMessages = document.getElementById(
+  "chat-messages"
+)! as HTMLDivElement;
 const chatForm = document.getElementById("chat-form")! as HTMLFormElement;
 const usernameInput = document.getElementById(
   "username-input"
@@ -19,21 +24,28 @@ const usernameInput = document.getElementById(
 const messageInput = document.getElementById(
   "message-input"
 )! as HTMLInputElement;
-const loginButton = document.getElementById("login-button")!;
-const voiceButton = document.getElementById("voice-button")!;
-const statusDiv = document.getElementById("status")!;
+const loginButton = document.getElementById(
+  "login-button"
+)! as HTMLButtonElement;
+const voiceButton = document.getElementById(
+  "voice-button"
+)! as HTMLButtonElement;
+const statusDiv = document.getElementById("status")! as HTMLDivElement;
 
+let isAuthenticated = false;
 let username = "";
+let currentUserId: string;
 
 loginButton.addEventListener("click", handleLogin);
-// chatForm.addEventListener('submit', handleSendMessage);
+chatForm.addEventListener("submit", handleSendMessage);
 // voiceButton.addEventListener('click', handleVoiceMessage);
 
 socket.on("connect", () => {
-const sessionToken = Cookies.get("sessionToken");
-if (sessionToken) {
-    socket.emit("login", (sessionToken))
-}
+    if (!isAuthenticated) {
+  const sessionToken = Cookies.get("sessionToken");
+  if (sessionToken) {
+    socket.emit("login", sessionToken);
+  }}
   console.log("Connected to server");
 });
 
@@ -52,19 +64,11 @@ socket.on(
 
 socket.on("message", (message: any) => {
   console.log("New message:", message);
+  displayMessage(message);
 });
-
-socket.on("message", (message: any) => {
-  console.log("New message:", message);
-});
-
-// Function to send a message
-function sendMessage(message: string) {
-  socket.emit("message", message);
-}
 
 function handleLogin() {
-  username = usernameInput.value.trim();
+  const username = usernameInput.value.trim();
   if (username) {
     socket.emit("create", username);
     // loginContainer.style.display = 'none';
@@ -72,15 +76,27 @@ function handleLogin() {
   }
 }
 
+function handleSendMessage(e: Event) {
+  e.preventDefault();
+  const messageContent = messageInput.value.trim();
+  if (messageContent) {
+    const message = {
+      content: messageContent,
+      timestamp: Date.now(),
+    };
+    socket.emit("message", message);
+    messageInput.value = "";
+  }
+}
+
 function updateUIWithUserInfo(user: { id: string; name: string }) {
   // Update UI to show logged in user's name
   console.log("Logged in as:", user.name);
+  currentUserId = user.id;
+  isAuthenticated = true;
   if (loginContainer && chatForm && statusDiv) {
     // Hide login container
     loginContainer.style.display = "none";
-
-    // Show chat form
-    chatForm.style.display = "block";
 
     // Update status with user info
     statusDiv.textContent = `Logged in as: ${user.name}`;
@@ -112,4 +128,27 @@ function updateConnectedUsersList(users: User[]) {
   if (chatContainer) {
     chatContainer.appendChild(userList);
   }
+}
+
+function displayMessage(message: Message): void {
+  const formattedDate = formatMessageDate(message.timestamp);
+
+  const messageElement = document.createElement("div");
+  messageElement.classList.add("message");
+
+  // Add class based on message author
+  if (message.userId === currentUserId) {
+    messageElement.classList.add("my-message");
+  } else {
+    messageElement.classList.add("other-message");
+  }
+
+  messageElement.innerHTML = `
+      <span class="message-user">${message.userName}</span>
+      <span class="message-time">${formattedDate}</span>
+      <div class="message-content">${message.content}</div>
+    `;
+
+  chatMessages.appendChild(messageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
