@@ -29,10 +29,12 @@ loginButton.addEventListener("click", handleLogin);
 // chatForm.addEventListener('submit', handleSendMessage);
 // voiceButton.addEventListener('click', handleVoiceMessage);
 
-socket.on("connect", () => console.log("Connected to server"));
-//??
-socket.on("disconnect", () => {
-  console.log("Disconnected from server");
+socket.on("connect", () => {
+const sessionToken = Cookies.get("sessionToken");
+if (sessionToken) {
+    socket.emit("login", (sessionToken))
+}
+  console.log("Connected to server");
 });
 
 socket.on("usersList", (users: Array<{ id: string; name: string }>) => {
@@ -64,7 +66,7 @@ function sendMessage(message: string) {
 function handleLogin() {
   username = usernameInput.value.trim();
   if (username) {
-    socket.emit("login", username);
+    socket.emit("create", username);
     // loginContainer.style.display = 'none';
     // chatContainer.style.display = 'block';
   }
