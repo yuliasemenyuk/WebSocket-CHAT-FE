@@ -1,8 +1,15 @@
 import "./app.css";
 import Cookies from "js-cookie";
 import { io } from "socket.io-client";
+import {Howl, Howler} from 'howler';
 import { User, Message } from "./types";
 import { formatMessageDate } from "./utils";
+import notificationSound from "../notification.wav";
+
+const notification = new Howl({
+    src: [notificationSound]
+  });
+  
 
 //Connecting to server
 const socket = io(process.env.HOST);
@@ -64,6 +71,7 @@ socket.on(
 
 socket.on("message", (message: any) => {
   console.log("New message:", message);
+  notification.play();
   displayMessage(message);
 });
 
@@ -125,9 +133,8 @@ function updateConnectedUsersList(users: User[]) {
   userList.appendChild(list);
 
   // Add the new list to the chat container
-  if (chatContainer) {
+    notification.play();
     chatContainer.appendChild(userList);
-  }
 }
 
 function displayMessage(message: Message): void {

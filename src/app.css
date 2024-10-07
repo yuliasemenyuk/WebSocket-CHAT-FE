@@ -14,9 +14,9 @@ body {
 }
 
 #chat-container {
-  height: 100vh;
-  max-height: 700px;
-  width: 600px;
+  height: 95vh;
+  /* max-height: 700px; */
+  width: 800px;
   border: 1px solid #ccc;
   border-radius: 5px;
   display: flex;

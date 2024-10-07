@@ -15,6 +15,14 @@ module.exports = {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
       },
+      {
+        test: /\.(wav|mp3)$/,
+        use: [
+          {
+            loader: 'file-loader',
+          }
+        ]
+      }
     ],
   },
   resolve: {
