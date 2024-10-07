@@ -72,6 +72,11 @@ socket.on(
   }
 );
 
+socket.on("history", (history: Message[]) => {
+    console.log("HISTORY", history)
+    history.map(msg => displayMessage(msg));
+})
+
 socket.on("message", (message: Message) => {
   console.log("New message:", message);
   notification.play();
@@ -184,7 +189,7 @@ function updateConnectedUsersList(users: User[]) {
 }
 
 function displayMessage(message: Message) {
-    console.log(message, "message")
+    console.log(message, "message");
   const chatMessages = document.getElementById(
     "chat-messages"
   ) as HTMLDivElement;
@@ -196,6 +201,7 @@ function displayMessage(message: Message) {
 
   let contentHtml;
   if (message.type === "audio") {
+    console.log(typeof message.content)
     const audioBlob = new Blob([message.content as ArrayBuffer], {
       type: "audio/webm",
     });

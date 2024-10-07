@@ -7,6 +7,6 @@ export interface Message {
     userId: string;
     userName: string;
     type: "audio" | "text";
-    content: string | ArrayBuffer;
+    content: string | Buffer;
     timestamp: number;
 }
