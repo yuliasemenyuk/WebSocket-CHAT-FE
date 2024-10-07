@@ -1,15 +1,14 @@
 import "./app.css";
 import Cookies from "js-cookie";
 import { io } from "socket.io-client";
-import {Howl, Howler} from 'howler';
+import { Howl, Howler } from "howler";
 import { User, Message } from "./types";
 import { formatMessageDate } from "./utils";
 import notificationSound from "../notification.wav";
 
 const notification = new Howl({
-    src: [notificationSound]
-  });
-  
+  src: [notificationSound],
+});
 
 //Connecting to server
 const socket = io(process.env.HOST);
@@ -42,17 +41,21 @@ const statusDiv = document.getElementById("status")! as HTMLDivElement;
 let isAuthenticated = false;
 let username = "";
 let currentUserId: string;
+let mediaRecorder: MediaRecorder | null = null;
+let audioChunks: Blob[] = [];
+let isRecording: boolean = false;
 
 loginButton.addEventListener("click", handleLogin);
 chatForm.addEventListener("submit", handleSendMessage);
 // voiceButton.addEventListener('click', handleVoiceMessage);
 
 socket.on("connect", () => {
-    if (!isAuthenticated) {
-  const sessionToken = Cookies.get("sessionToken");
-  if (sessionToken) {
-    socket.emit("login", sessionToken);
-  }}
+  if (!isAuthenticated) {
+    const sessionToken = Cookies.get("sessionToken");
+    if (sessionToken) {
+      socket.emit("login", sessionToken);
+    }
+  }
   console.log("Connected to server");
 });
 
@@ -69,7 +72,7 @@ socket.on(
   }
 );
 
-socket.on("message", (message: any) => {
+socket.on("message", (message: Message) => {
   console.log("New message:", message);
   notification.play();
   displayMessage(message);
@@ -94,6 +97,49 @@ function handleSendMessage(e: Event) {
     };
     socket.emit("message", message);
     messageInput.value = "";
+  }
+}
+
+voiceButton.addEventListener("mousedown", () => {
+  startRecording();
+  isRecording = true;
+});
+
+voiceButton.addEventListener("mouseup", () => {
+  if (isRecording) {
+    stopRecording();
+    isRecording = false;
+  }
+});
+
+function startRecording() {
+  voiceButton.innerHTML = "&#128308";
+  navigator.mediaDevices
+    .getUserMedia({ audio: true, video: false })
+    .then((stream) => {
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.addEventListener("dataavailable", function (event) {
+        audioChunks.push(event.data);
+      });
+      mediaRecorder.addEventListener("stop", () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        sendAudioMessage(audioBlob);
+      });
+
+      mediaRecorder.start();
+    })
+    .catch((error) => {
+      console.error("Error accessing microphone:", error);
+      stopRecording();
+    });
+}
+
+function stopRecording() {
+  voiceButton.innerHTML = "&#127908";
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach((track) => track.stop());
   }
 }
 
@@ -133,29 +179,52 @@ function updateConnectedUsersList(users: User[]) {
   userList.appendChild(list);
 
   // Add the new list to the chat container
-    notification.play();
-    chatContainer.appendChild(userList);
+  notification.play();
+  chatContainer.appendChild(userList);
 }
 
-function displayMessage(message: Message): void {
-  const formattedDate = formatMessageDate(message.timestamp);
-
+function displayMessage(message: Message) {
+    console.log(message, "message")
+  const chatMessages = document.getElementById(
+    "chat-messages"
+  ) as HTMLDivElement;
   const messageElement = document.createElement("div");
-  messageElement.classList.add("message");
+  messageElement.classList.add(
+    "message",
+    message.userId === currentUserId ? "my-message" : "other-message"
+  );
 
-  // Add class based on message author
-  if (message.userId === currentUserId) {
-    messageElement.classList.add("my-message");
+  let contentHtml;
+  if (message.type === "audio") {
+    const audioBlob = new Blob([message.content as ArrayBuffer], {
+      type: "audio/webm",
+    });
+    const audioUrl = URL.createObjectURL(audioBlob);
+    contentHtml = `<audio controls src="${audioUrl}"></audio>`;
   } else {
-    messageElement.classList.add("other-message");
+    contentHtml = `<p>${message.content}</p>`;
   }
 
   messageElement.innerHTML = `
       <span class="message-user">${message.userName}</span>
-      <span class="message-time">${formattedDate}</span>
-      <div class="message-content">${message.content}</div>
+      ${contentHtml}
+      <span class="message-time">${formatMessageDate(message.timestamp)}</span>
     `;
 
   chatMessages.appendChild(messageElement);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function sendAudioMessage(audioBlob: Blob) {
+  const reader = new FileReader();
+  reader.onload = function () {
+    const arrayBuffer = reader.result as ArrayBuffer;
+    const message = {
+      type: "audio",
+      content: arrayBuffer,
+      timestamp: Date.now(),
+    };
+    socket.emit("message", message);
+  };
+  reader.readAsArrayBuffer(audioBlob);
 }

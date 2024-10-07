@@ -4,8 +4,9 @@ export interface User {
 }
 
 export interface Message {
-  userId: string;
-  userName: string;
-  content: string;
-  timestamp: number;
+    userId: string;
+    userName: string;
+    type: "audio" | "text";
+    content: string | ArrayBuffer;
+    timestamp: number;
 }
