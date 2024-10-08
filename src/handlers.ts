@@ -38,6 +38,7 @@ const loginButton = document.getElementById(
 const voiceButton = document.getElementById(
   "voice-button"
 )! as HTMLButtonElement;
+const sendButton = document.getElementById("send-button")! as HTMLButtonElement
 const statusDiv = document.getElementById("status")! as HTMLDivElement;
 
 loginButton.addEventListener("click", handleLogin);
@@ -121,6 +122,31 @@ function stopRecording() {
   }
 }
 
+function sendAudioMessage(audioBlob: Blob) {
+    // session Authentification
+    const sessionToken = Cookies.get("sessionToken");
+    if (!sessionToken) {
+      textNotification("Session is not active", "error");
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+    } else {
+      //Message sending
+      const reader = new FileReader();
+      reader.onload = function () {
+        const arrayBuffer = reader.result as ArrayBuffer;
+        const message = {
+          type: "audio",
+          content: arrayBuffer,
+          timestamp: Date.now(),
+          sessionToken: sessionToken,
+        };
+        socket.emit("message", message);
+      };
+      reader.readAsArrayBuffer(audioBlob);
+    }
+  }
+
 export function updateUIWithUserInfo(user: { id: string; name: string }) {
   // Update UI to show logged in user's name
   console.log("Logged in as:", user.name);
@@ -128,6 +154,8 @@ export function updateUIWithUserInfo(user: { id: string; name: string }) {
   if (loginContainer && chatForm && statusDiv) {
     // Hide login container
     loginContainer.style.display = "none";
+    voiceButton.removeAttribute('disabled');
+    sendButton.removeAttribute('disabled');
 
     // Update status with user info
     statusDiv.textContent = `Logged in as: ${user.name}`;
@@ -207,36 +235,4 @@ export function displayMessage(message: Message) {
 
   chatMessages.appendChild(messageElement);
   chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function sendAudioMessage(audioBlob: Blob) {
-  // session Authentification
-  const sessionToken = Cookies.get("sessionToken");
-  if (!sessionToken) {
-    textNotification("Session is not active", "error");
-    setTimeout(() => {
-      location.reload();
-    }, 1500);
-  } else {
-    //Message sending
-    const reader = new FileReader();
-    reader.onload = function () {
-      const arrayBuffer = reader.result as ArrayBuffer;
-      const message = {
-        type: "audio",
-        content: arrayBuffer,
-        timestamp: Date.now(),
-        sessionToken: sessionToken,
-      };
-      socket.emit("message", message);
-    };
-    reader.readAsArrayBuffer(audioBlob);
-  }
-}
-
-function sessionAuthentification(sessionToken: string) {
-  if (!sessionToken) {
-    textNotification("Session is not active", "error");
-    return;
-  }
 }

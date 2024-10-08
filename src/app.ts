@@ -22,7 +22,6 @@ export const socket = io(process.env.HOST, {
 let isAuthenticated = false;
 
 socket.on("connect", () => {
-    console.log(isAuthenticated, "let isAuthenticated")
   if (!isAuthenticated) {
     const sessionToken = Cookies.get("sessionToken");
     if (sessionToken) {
