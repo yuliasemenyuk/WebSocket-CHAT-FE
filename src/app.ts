@@ -11,11 +11,18 @@ import {
 import { textNotification } from "./utils";
 
 //Connecting to server
-export const socket = io(process.env.HOST);
+export const socket = io(process.env.HOST, {
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000,
+});
 
 let isAuthenticated = false;
 
 socket.on("connect", () => {
+    console.log(isAuthenticated, "let isAuthenticated")
   if (!isAuthenticated) {
     const sessionToken = Cookies.get("sessionToken");
     if (sessionToken) {
@@ -68,4 +75,44 @@ socket.on("messageSuccess", () => {
   )! as HTMLInputElement;
   textNotification("Message sent", "success");
   messageInput.value = "";
+});
+
+socket.on("disconnect", (reason) => {
+  console.log("Disconnected from server:", reason);
+  textNotification(
+    "Lost connection to server. Attempting to reconnect...",
+    "error"
+  );
+});
+
+socket.io.on("reconnect_attempt", (attemptNumber) => {
+  console.log("Attempting to reconnect:", attemptNumber);
+  textNotification(`Reconnection attempt ${attemptNumber}...`, "error");
+});
+
+socket.io.on("reconnect", (attemptNumber) => {
+  console.log("Reconnected on attempt:", attemptNumber);
+  textNotification("Reconnected to server", "success");
+  const sessionToken = Cookies.get("sessionToken");
+  if (sessionToken) {
+    socket.emit("login", sessionToken);
+  } else {
+    location.reload();
+  }
+});
+
+socket.io.on("reconnect_error", (error) => {
+  console.error("Reconnection error:", error);
+  textNotification(
+    "Failed to reconnect. Please check your internet connection.",
+    "error"
+  );
+});
+
+socket.io.on("reconnect_failed", () => {
+  console.error("Failed to reconnect");
+  textNotification(
+    "Failed to reconnect after multiple attempts. Please refresh the page or try again later.",
+    "error"
+  );
 });

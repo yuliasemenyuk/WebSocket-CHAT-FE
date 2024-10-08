@@ -1,7 +1,7 @@
 import { User, Message } from "./types";
 import { formatMessageDate, textNotification } from "./utils";
 import { socket } from "./app";
-import { Howl, Howler } from "howler";
+import { Howl} from "howler";
 import notificationSound from "../notification.wav";
 import Cookies from "js-cookie";
 
