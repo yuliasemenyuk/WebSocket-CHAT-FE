@@ -9,4 +9,5 @@ export interface Message {
     type: "audio" | "text";
     content: string | ArrayBuffer;
     timestamp: number;
+    sessionToken: string;
 }

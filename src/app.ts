@@ -26,7 +26,6 @@ socket.on("connect", () => {
 });
 
 socket.on("usersList", (users: Array<{ id: string; name: string }>) => {
-  console.log("Received updated users list:", users);
   updateConnectedUsersList(users);
 });
 
@@ -42,7 +41,10 @@ socket.on(
 socket.on("loginError", () => {
   Cookies.remove("sessionToken");
   isAuthenticated = false;
-  textNotification("Failed to login, try again", "error");
+  textNotification("Authentification failed, try again", "error");
+  setTimeout(() => {
+    location.reload();
+  }, 1000);
 });
 
 socket.on("history", (history: Message[]) => {

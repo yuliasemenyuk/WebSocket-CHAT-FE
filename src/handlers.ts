@@ -3,6 +3,7 @@ import { formatMessageDate, textNotification } from "./utils";
 import { socket } from "./app";
 import { Howl, Howler } from "howler";
 import notificationSound from "../notification.wav";
+import Cookies from "js-cookie";
 
 export const notification = new Howl({
   src: [notificationSound],
@@ -51,17 +52,29 @@ function handleLogin() {
 
 function handleSendMessage(e: Event) {
   e.preventDefault();
-  const messageContent = messageInput.value.trim();
-  if (messageContent && messageContent.length <= 1000) {
-    const message = {
-      content: messageContent,
-      timestamp: Date.now(),
-    };
-    socket.emit("message", message);
-  } else if (!messageContent) {
-    textNotification("Message can't be empty", "error");
+  // session Authentification
+  const sessionToken = Cookies.get("sessionToken");
+  if (!sessionToken) {
+    textNotification("Session is not active", "error");
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
   } else {
-    textNotification("Message is too long", "error");
+    //Message sending
+    const messageContent = messageInput.value.trim();
+    if (messageContent && messageContent.length <= 1000) {
+      const message = {
+        type: "text",
+        content: messageContent,
+        timestamp: Date.now(),
+        sessionToken: sessionToken,
+      };
+      socket.emit("message", message);
+    } else if (!messageContent) {
+      textNotification("Message can't be empty", "error");
+    } else {
+      textNotification("Message is too long", "error");
+    }
   }
 }
 
@@ -197,15 +210,33 @@ export function displayMessage(message: Message) {
 }
 
 function sendAudioMessage(audioBlob: Blob) {
-  const reader = new FileReader();
-  reader.onload = function () {
-    const arrayBuffer = reader.result as ArrayBuffer;
-    const message = {
-      type: "audio",
-      content: arrayBuffer,
-      timestamp: Date.now(),
+  // session Authentification
+  const sessionToken = Cookies.get("sessionToken");
+  if (!sessionToken) {
+    textNotification("Session is not active", "error");
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
+  } else {
+    //Message sending
+    const reader = new FileReader();
+    reader.onload = function () {
+      const arrayBuffer = reader.result as ArrayBuffer;
+      const message = {
+        type: "audio",
+        content: arrayBuffer,
+        timestamp: Date.now(),
+        sessionToken: sessionToken,
+      };
+      socket.emit("message", message);
     };
-    socket.emit("message", message);
-  };
-  reader.readAsArrayBuffer(audioBlob);
+    reader.readAsArrayBuffer(audioBlob);
+  }
+}
+
+function sessionAuthentification(sessionToken: string) {
+  if (!sessionToken) {
+    textNotification("Session is not active", "error");
+    return;
+  }
 }
